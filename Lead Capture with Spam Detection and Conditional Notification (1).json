@@ -1,0 +1,1001 @@
+{
+  "name": "Lead Capture with Spam Detection and Conditional Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "63330909-af8b-468f-bf10-3d85bf11ab23",
+      "name": "Receive Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -3136,
+        3392
+      ],
+      "webhookId": "cad3b8d9-abc9-438c-8f3f-c4e92a553810"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "customerEmail",
+              "value": "tarundarkpheonix@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "customerName",
+              "value": "abc industries",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "5fdb5d79-c507-42ec-aa9e-c39e35988c88",
+      "name": "Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2912,
+        3392
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "name",
+              "value": "={{ $json.body.name || $json.name || 'N/A' }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "email",
+              "value": "={{ $json.body.email || $json.email || 'N/A' }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "phone",
+              "value": "={{ $json.body.phone || $json.phone || 'N/A' }}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "message",
+              "value": "={{ $json.body.message || $json.message || 'N/A' }}",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "sourceUrl",
+              "value": "={{ $json.body.sourceUrl || $json.sourceUrl || 'N/A' }}",
+              "type": "string"
+            },
+            {
+              "id": "id-6",
+              "name": "timestamp",
+              "value": "={{ $json.body.timestamp || $json.timestamp || $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "id-7",
+              "name": "leadSource",
+              "value": "={{ $json.body.leadSource || $json.leadSource || 'Website' }}",
+              "type": "string"
+            },
+            {
+              "id": "id-8",
+              "name": "customerName",
+              "value": "={{ $('Workflow Configuration').item.json.customerName }}",
+              "type": "string"
+            },
+            {
+              "id": "id-9",
+              "name": "customerEmail",
+              "value": "={{ $('Workflow Configuration').item.json.customerEmail }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "b87cdac5-b398-48bd-9ba2-2cda206a2248",
+      "name": "Prepare Lead Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2688,
+        3392
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "9761370a-e7bd-480f-b2a5-cbc483b8b8d3",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -2464,
+        3504
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "5toxF4xheLPUO8mQ",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze this lead:\n\nName: {{ $json.name }}\nEmail: {{ $json.email }}\nPhone: {{ $json.phone }}\nMessage: {{ $json.message }}\nSource URL: {{ $json.sourceUrl }}\nLead Source: {{ $json.leadSource }}\n\nProvide classification and reason.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a lead quality analyzer. Your task is to analyze lead data and determine if it is a legitimate lead or possible spam. Classify as \"Possible Spam\" if the email looks fake, name contains gibberish, phone is invalid, message is generic spam, or multiple fields are missing. Classify as \"New Lead\" if the lead appears legitimate with real contact information and genuine interest. Always provide your classification and a brief reason."
+        }
+      },
+      "id": "b89ffefc-4552-4303-8651-17eea045cb2a",
+      "name": "Spam Detection AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -2464,
+        3280
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"status\": {\n\t\t\t\"type\": \"string\",\n\t\t\t\"description\": \"Lead status: either New Lead or Possible Spam\"\n\t\t},\n\t\t\"reason\": {\n\t\t\t\"type\": \"string\",\n\t\t\t\"description\": \"Brief explanation for the classification decision\"\n\t\t}\n\t}\n}"
+      },
+      "id": "be7250f5-6524-428f-ac4c-13e2c2629769",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -2320,
+        3552
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.status }}",
+                    "rightValue": "New Lead",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "New Lead"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.status }}",
+                    "rightValue": "Possible Spam",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Possible Spam"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "09f1428f-21bc-4f19-a02a-3511f1afd147",
+      "name": "Route by Lead Status",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -2112,
+        3392
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1nT2rOy3h_72mEpXD5kOKzKuyZdinIR4Xq8dsQ0h0n3g/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $('Prepare Lead Data').item.json.name }}",
+            "Phone Number": "={{ $('Prepare Lead Data').item.json.phone }}",
+            "Email Address": "={{ $('Prepare Lead Data').item.json.email }}",
+            "Lead Details": "={{ $('Prepare Lead Data').item.json.message }}",
+            "Status": "={{ $json.output.status }}",
+            "Submission URL": "={{ $('Prepare Lead Data').item.json.sourceUrl }}",
+            "Lead Source": "={{ $('Prepare Lead Data').item.json.leadSource }}",
+            "Customer name": "={{ $('Prepare Lead Data').item.json.customerName }}",
+            "Created at": "={{ $('Prepare Lead Data').item.json.timestamp }}",
+            "Updated at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "Name"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email Address",
+              "displayName": "Email Address",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead Details",
+              "displayName": "Lead Details",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Submission URL",
+              "displayName": "Submission URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead Source",
+              "displayName": "Lead Source",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer name",
+              "displayName": "Customer name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created at",
+              "displayName": "Created at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Updated at",
+              "displayName": "Updated at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "a1bb9c69-8b5a-4ef6-8e20-7471c27005d1",
+      "name": "Store New Lead in Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1888,
+        3392
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hqzvoAKC24O5W8Sn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/1nT2rOy3h_72mEpXD5kOKzKuyZdinIR4Xq8dsQ0h0n3g/edit?gid=0#gid=0"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $('Prepare Lead Data').item.json.name }}",
+            "Phone Number": "={{ $('Prepare Lead Data').item.json.phone }}",
+            "Email Address": "={{ $('Prepare Lead Data').item.json.email }}",
+            "Lead Details": "={{ $('Prepare Lead Data').item.json.message }}",
+            "Status": "={{ $json.output.status }}",
+            "Submission URL": "={{ $('Prepare Lead Data').item.json.sourceUrl }}",
+            "Lead Source": "={{ $('Prepare Lead Data').item.json.leadSource }}",
+            "Customer name": "={{ $('Prepare Lead Data').item.json.customerName }}",
+            "Created at": "={{ $('Prepare Lead Data').item.json.timestamp }}",
+            "Updated at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "Name"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email Address",
+              "displayName": "Email Address",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead Details",
+              "displayName": "Lead Details",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Submission URL",
+              "displayName": "Submission URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead Source",
+              "displayName": "Lead Source",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer name",
+              "displayName": "Customer name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created at",
+              "displayName": "Created at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Updated at",
+              "displayName": "Updated at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "106821b1-a4f1-4ff2-bd1f-666e92ab10fb",
+      "name": "Store Spam Lead in Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1888,
+        3680
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "hqzvoAKC24O5W8Sn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Prepare Lead Data').item.json.customerEmail }}",
+        "subject": "=New Lead Received: {{ $('Prepare Lead Data').item.json.name }}",
+        "message": "=<h2>New Lead Notification</h2><p>A new lead has been received and stored in your system.</p><h3>Lead Details:</h3><ul><li><strong>Name:</strong> {{ $('Prepare Lead Data').item.json.name }}</li><li><strong>Email:</strong> {{ $('Prepare Lead Data').item.json.email }}</li><li><strong>Phone:</strong> {{ $('Prepare Lead Data').item.json.phone }}</li><li><strong>Message:</strong> {{ $('Prepare Lead Data').item.json.message }}</li><li><strong>Lead Source:</strong> {{ $('Prepare Lead Data').item.json.leadSource }}</li><li><strong>Submission URL:</strong> {{ $('Prepare Lead Data').item.json.sourceUrl }}</li><li><strong>Status:</strong> {{ $json.output.status }}</li><li><strong>Timestamp:</strong> {{ $('Prepare Lead Data').item.json.timestamp }}</li></ul><p>Please follow up with this lead as soon as possible.</p>",
+        "options": {}
+      },
+      "id": "aa682f4e-1276-45ac-87cd-003f0d3b85af",
+      "name": "Send New Lead Email Notification",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1664,
+        3584
+      ],
+      "webhookId": "bdd7f687-2bc1-4919-af5f-f5540962ad9c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gkZLjpPK1ACIrGTl",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/1nT2rOy3h_72mEpXD5kOKzKuyZdinIR4Xq8dsQ0h0n3g/edit?gid=0#gid=0"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gid=0",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nT2rOy3h_72mEpXD5kOKzKuyZdinIR4Xq8dsQ0h0n3g/edit#gid=0"
+        },
+        "event": "rowUpdate",
+        "options": {
+          "columnsToWatch": [
+            "Status"
+          ]
+        }
+      },
+      "id": "628bcae4-7722-410f-a56f-47437a8fa5ca",
+      "name": "Monitor Sheet for Status Changes",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -3136,
+        4000
+      ],
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "u2DwJBG9sjAhewPu",
+          "name": "Google Sheets Trigger account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "customerEmail",
+              "value": "tarundarkpheonix@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "previousStatus",
+              "value": "={{ $json.previous.Status }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "currentStatus",
+              "value": "={{ $json.current.Status }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "3befe384-e6bb-4614-a771-57b10e9fa51c",
+      "name": "Workflow Configuration 2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2912,
+        4000
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ $json.previous.Status }}",
+              "rightValue": "Possible Spam",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "id-2",
+              "leftValue": "={{ $json.current.Status }}",
+              "rightValue": "New Lead",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c759430b-fc9e-4126-9f96-a83043d3fe68",
+      "name": "Check Status Changed to New Lead",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2688,
+        4000
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Workflow Configuration 2').item.json.customerEmail }}",
+        "subject": "=Lead Status Updated: {{ $json.current['Name'] }}",
+        "message": "=<h2>Lead Status Updated - Action Required</h2><p>A lead previously marked as <strong>Possible Spam</strong> has been manually updated to <strong>New Lead</strong> status.</p><h3>Lead Details:</h3><ul><li><strong>Name:</strong> {{ $json.current[\"Name\"] }}</li><li><strong>Email:</strong> {{ $json.current[\"Email Address\"] }}</li><li><strong>Phone:</strong> {{ $json.current[\"Phone Number\"] }}</li><li><strong>Message:</strong> {{ $json.current[\"Lead Details\"] }}</li><li><strong>Lead Source:</strong> {{ $json.current[\"Lead Source\"] }}</li><li><strong>Submission URL:</strong> {{ $json.current[\"Submission URL\"] }}</li><li><strong>Customer:</strong> {{ $json.current[\"Customer name\"] }}</li><li><strong>Previous Status:</strong> {{ $json.previous.Status }}</li><li><strong>Current Status:</strong> {{ $json.current.Status }}</li><li><strong>Updated at:</strong> {{ $json.current[\"Updated at\"] }}</li></ul><h3>Extra Metadata:</h3><pre>{{ $json.current[\"Extra Metadata\"] || \"{}\" }}</pre><p>Please review and follow up with this lead.</p>",
+        "options": {}
+      },
+      "id": "ed8cb0f1-3b24-4d44-902b-aa2f966b1209",
+      "name": "Send Updated Lead Email Notification",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -2464,
+        4000
+      ],
+      "webhookId": "5f3a9dd5-a3a2-401b-9398-1e4a2eb90bef",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gkZLjpPK1ACIrGTl",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Lead received and processed\", \"status\": $('Route by Lead Status').item.json.output.status } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "d5d116ac-e895-424a-9d24-4ea4e9005fd1",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -1664,
+        3392
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "4963acdb-44b2-470c-af1a-3a0e29314b88",
+      "name": "Catch AI Agent Errors",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2912,
+        3776
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "errorMessage",
+              "value": "={{ $json.error.message }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "errorNode",
+              "value": "={{ $json.error.node.name }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "leadData",
+              "value": "={{ JSON.stringify($json.error.context.data) }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e2b4c1e2-53c0-49d4-9be6-200c3c7eaee9",
+      "name": "Error Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2688,
+        3776
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fallback Spam Detection Logic\n// This runs when the AI agent fails\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const leadData = item.json;\n  \n  // Extract lead fields (handle both direct fields and nested body)\n  const name = leadData.name || leadData.body?.name || 'N/A';\n  const email = leadData.email || leadData.body?.email || 'N/A';\n  const phone = leadData.phone || leadData.body?.phone || 'N/A';\n  const message = leadData.message || leadData.body?.message || 'N/A';\n  \n  let status = 'New Lead';\n  let reason = 'Lead appears legitimate based on basic validation';\n  let spamScore = 0;\n  const spamReasons = [];\n  \n  // Check 1: Email validity\n  const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n  if (email === 'N/A' || !emailRegex.test(email)) {\n    spamScore += 2;\n    spamReasons.push('Invalid or missing email');\n  } else if (email.includes('test') || email.includes('fake') || email.includes('spam')) {\n    spamScore += 2;\n    spamReasons.push('Email contains suspicious keywords');\n  }\n  \n  // Check 2: Name quality\n  if (name === 'N/A' || name.length < 2) {\n    spamScore += 2;\n    spamReasons.push('Missing or too short name');\n  } else if (/[0-9]{3,}/.test(name) || /[^a-zA-Z\\s\\-\\.]/.test(name)) {\n    spamScore += 1;\n    spamReasons.push('Name contains suspicious characters or numbers');\n  }\n  \n  // Check 3: Phone format (basic check)\n  if (phone === 'N/A') {\n    spamScore += 1;\n    spamReasons.push('Missing phone number');\n  } else {\n    const phoneDigits = phone.replace(/\\D/g, '');\n    if (phoneDigits.length < 10 || phoneDigits.length > 15) {\n      spamScore += 1;\n      spamReasons.push('Invalid phone number format');\n    }\n  }\n  \n  // Check 4: Message content\n  if (message === 'N/A' || message.length < 10) {\n    spamScore += 1;\n    spamReasons.push('Missing or very short message');\n  } else {\n    const spamKeywords = ['viagra', 'casino', 'lottery', 'winner', 'click here', 'buy now', 'limited time'];\n    const lowerMessage = message.toLowerCase();\n    const hasSpamKeywords = spamKeywords.some(keyword => lowerMessage.includes(keyword));\n    if (hasSpamKeywords) {\n      spamScore += 2;\n      spamReasons.push('Message contains spam keywords');\n    }\n  }\n  \n  // Check 5: Multiple missing fields\n  const missingFields = [name, email, phone, message].filter(field => field === 'N/A').length;\n  if (missingFields >= 3) {\n    spamScore += 2;\n    spamReasons.push('Multiple required fields are missing');\n  }\n  \n  // Determine final status based on spam score\n  if (spamScore >= 3) {\n    status = 'Possible Spam';\n    reason = spamReasons.join('; ');\n  }\n  \n  // Create output matching AI agent structure\n  results.push({\n    json: {\n      ...leadData,\n      output: {\n        status: status,\n        reason: reason\n      },\n      fallbackDetection: true,\n      spamScore: spamScore\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "d060f943-bf8e-422d-8236-a58b682bbcd3",
+      "name": "Fallback Spam Detection Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2400,
+        3776
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.status }}",
+                    "rightValue": "New Lead",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "New Lead"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.status }}",
+                    "rightValue": "Possible Spam",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Possible Spam"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "eebff20b-b6bb-4042-8f67-d39e1c1ee1a1",
+      "name": "Route Fallback Results",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -2112,
+        3776
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Receive Lead Webhook": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "Prepare Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Spam Detection AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Spam Detection AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Spam Detection AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Spam Detection AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Route by Lead Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Lead Status": {
+      "main": [
+        [
+          {
+            "node": "Store New Lead in Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Store Spam Lead in Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store New Lead in Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send New Lead Email Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monitor Sheet for Status Changes": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Configuration 2": {
+      "main": [
+        [
+          {
+            "node": "Check Status Changed to New Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Status Changed to New Lead": {
+      "main": [
+        [
+          {
+            "node": "Send Updated Lead Email Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Spam Lead in Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catch AI Agent Errors": {
+      "main": [
+        [
+          {
+            "node": "Error Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "Fallback Spam Detection Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback Spam Detection Logic": {
+      "main": [
+        [
+          {
+            "node": "Route Fallback Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Fallback Results": {
+      "main": [
+        [
+          {
+            "node": "Store New Lead in Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Store Spam Lead in Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "14ac5536-50ba-4289-ad2a-03b63e329f77",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ce6c980bb7eb70e9556b54f0bfabc8953b8befb1d01f879cb477f0d18f595536"
+  },
+  "id": "MPoqPG3GcMJwGLWQ",
+  "tags": []
+}
